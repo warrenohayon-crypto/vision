@@ -24,10 +24,17 @@ struct ContentView: View {
                 .toolbar { toolbarContent }
         }
         .sheet(isPresented: $model.showAddSheet) {
-            AddElementSheet()
+            LibraryBrowserView()
         }
         .sheet(isPresented: $model.showEventSheet) {
             EventInfoSheet()
+        }
+        // Debug/demo: launch with `-autoImmersive` to open the 3D view at start.
+        .task {
+            if ProcessInfo.processInfo.arguments.contains("-autoImmersive"), !model.isImmersiveSpaceOpen {
+                let result = await openImmersiveSpace(id: StageViewModel.immersiveSpaceID)
+                model.isImmersiveSpaceOpen = (result == .opened)
+            }
         }
     }
 
@@ -44,7 +51,7 @@ struct ContentView: View {
             Button {
                 model.showAddSheet = true
             } label: {
-                Label("Ajouter", systemImage: "plus.circle.fill")
+                Label("Bibliothèque", systemImage: "plus.circle.fill")
             }
             .buttonStyle(.borderedProminent)
         }
@@ -111,7 +118,7 @@ struct ElementRow: View {
                 Text(element.name)
                     .font(.body)
                     .foregroundStyle(element.isActive ? .primary : .secondary)
-                Text(element.type.rawValue)
+                Text(element.product?.displayName ?? element.type.rawValue)
                     .font(.caption2)
                     .foregroundStyle(.secondary)
             }
@@ -157,6 +164,14 @@ struct StageOverviewView: View {
 
     var activeCount: Int { model.elements.filter { $0.isActive }.count }
 
+    var totalWeight: Float {
+        model.elements.reduce(0) { $0 + ($1.product?.weight ?? 0) * Float($1.quantity) }
+    }
+
+    var totalPower: Int {
+        model.elements.reduce(0) { $0 + ($1.product?.power ?? 0) * $1.quantity }
+    }
+
     var body: some View {
         ScrollView {
             VStack(spacing: 20) {
@@ -183,6 +198,8 @@ struct StageOverviewView: View {
                     StatCard(title: "Éléments", value: "\(model.elements.count)", icon: "square.3.layers.3d", color: .blue)
                     StatCard(title: "Actifs", value: "\(activeCount)", icon: "checkmark.circle.fill", color: .green)
                     StatCard(title: "Inactifs", value: "\(model.elements.count - activeCount)", icon: "pause.circle.fill", color: .orange)
+                    StatCard(title: "Poids total", value: String(format: "%.1f t", totalWeight / 1000), icon: "scalemass.fill", color: .gray)
+                    StatCard(title: "Puissance", value: String(format: "%.0f kW", Double(totalPower) / 1000), icon: "bolt.fill", color: .yellow)
                     if model.eventInfo.capacity > 0 {
                         StatCard(title: "Capacité", value: "\(model.eventInfo.capacity)", icon: "person.3.fill", color: .purple)
                     }
@@ -264,6 +281,22 @@ struct ElementDetailView: View {
 
     var body: some View {
         Form {
+            if let product = element.product {
+                Section("Produit") {
+                    LabeledContent("Modèle", value: product.displayName)
+                    LabeledContent("Catégorie", value: "\(product.category.rawValue) · \(product.family)")
+                    LabeledContent("Dimensions", value: product.dimensionText)
+                    if product.weight > 0 {
+                        LabeledContent("Poids", value: String(format: "%.1f kg", product.weight * Float(element.quantity)))
+                    }
+                    if product.power > 0 {
+                        LabeledContent("Consommation", value: "\(product.power * element.quantity) W")
+                    }
+                    if product.shape == .lineArrayBox || product.shape == .subwoofer {
+                        Stepper("Nombre de boîtes : \(element.quantity)", value: $element.quantity, in: 1...24)
+                    }
+                }
+            }
             Section("Informations") {
                 TextField("Nom", text: $element.name)
                 Picker("Type", selection: $element.type) {
@@ -284,19 +317,19 @@ struct ElementDetailView: View {
 
             Section("Position 3D") {
                 LabeledContent("X (gauche/droite)") {
-                    Slider(value: $element.position.x, in: -5...5, step: 0.1)
+                    Slider(value: $element.position.x, in: -20...20, step: 0.1)
                     Text(String(format: "%.1f m", element.position.x))
                         .frame(width: 50)
                         .foregroundStyle(.secondary)
                 }
                 LabeledContent("Y (hauteur)") {
-                    Slider(value: $element.position.y, in: 0...5, step: 0.1)
+                    Slider(value: $element.position.y, in: 0...15, step: 0.1)
                     Text(String(format: "%.1f m", element.position.y))
                         .frame(width: 50)
                         .foregroundStyle(.secondary)
                 }
                 LabeledContent("Z (profondeur)") {
-                    Slider(value: $element.position.z, in: -6...0, step: 0.1)
+                    Slider(value: $element.position.z, in: -25...15, step: 0.1)
                     Text(String(format: "%.1f m", element.position.z))
                         .frame(width: 50)
                         .foregroundStyle(.secondary)

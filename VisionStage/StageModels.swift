@@ -17,6 +17,12 @@ struct StageElement: Identifiable, Codable, Equatable {
     var color: ElementColor
     var isActive: Bool
     var notes: String
+    /// Library product this element was created from (nil = generic element).
+    var productID: String? = nil
+    /// Number of cabinets for line arrays / subs (hang or stack size).
+    var quantity: Int = 1
+
+    var product: LibraryProduct? { productID.flatMap { ProductLibrary.product(id: $0) } }
 
     enum ElementType: String, Codable, CaseIterable {
         case mainStage    = "Scène principale"
@@ -25,6 +31,11 @@ struct StageElement: Identifiable, Codable, Equatable {
         case speaker      = "Enceinte"
         case camera       = "Caméra"
         case truss        = "Structure / Truss"
+        case rigging      = "Levage / Rigging"
+        case sfx          = "Effets spéciaux"
+        case control      = "Régie / Console"
+        case power        = "Énergie"
+        case backline     = "Backline"
         case table        = "Table technique"
         case chair        = "Chaise / Siège"
 
@@ -36,6 +47,11 @@ struct StageElement: Identifiable, Codable, Equatable {
             case .speaker:    return "speaker.wave.3.fill"
             case .camera:     return "camera.fill"
             case .truss:      return "square.3.layers.3d"
+            case .rigging:    return "link"
+            case .sfx:        return "flame.fill"
+            case .control:    return "slider.horizontal.3"
+            case .power:      return "bolt.fill"
+            case .backline:   return "guitars.fill"
             case .table:      return "rectangle.fill"
             case .chair:      return "chair.lounge.fill"
             }
@@ -50,6 +66,18 @@ struct StageElement: Identifiable, Codable, Equatable {
         case purple = "Violet"
         case white  = "Blanc"
         case orange = "Orange"
+
+        var uiColor: UIColor {
+            switch self {
+            case .blue:   return .systemBlue
+            case .red:    return .systemRed
+            case .green:  return .systemGreen
+            case .yellow: return .systemYellow
+            case .purple: return .systemPurple
+            case .white:  return .white
+            case .orange: return .systemOrange
+            }
+        }
 
         var swiftUIColor: Color {
             switch self {
