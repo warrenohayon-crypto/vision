@@ -7,27 +7,30 @@
 
 import SwiftUI
 
+// MARK: - App Entry Point
+
 @main
 struct VisionStageApp: App {
-
-    @State private var appModel = AppModel()
+    @StateObject private var stageModel = StageViewModel()
 
     var body: some Scene {
-        WindowGroup {
+        // Main 2D window (control panel)
+        WindowGroup("Stage Vision", id: "main") {
             ContentView()
-                .environment(appModel)
+                .environmentObject(stageModel)
         }
+        .windowStyle(.plain)
+        .defaultSize(width: 900, height: 600)
 
-        ImmersiveSpace(id: appModel.immersiveSpaceID) {
-            ImmersiveView()
-                .environment(appModel)
-                .onAppear {
-                    appModel.immersiveSpaceState = .open
-                }
-                .onDisappear {
-                    appModel.immersiveSpaceState = .closed
-                }
+        // 3D immersive space for the stage
+        ImmersiveSpace(id: StageViewModel.immersiveSpaceID) {
+            StageImmersiveView()
+                .environmentObject(stageModel)
+                // Keep the toolbar button in sync even when the space is
+                // closed by the system (e.g. Digital Crown) rather than the button.
+                .onAppear { stageModel.isImmersiveSpaceOpen = true }
+                .onDisappear { stageModel.isImmersiveSpaceOpen = false }
         }
-        .immersionStyle(selection: .constant(.full), in: .full)
+        .immersionStyle(selection: .constant(.mixed), in: .mixed)
     }
 }
